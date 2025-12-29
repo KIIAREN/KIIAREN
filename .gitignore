@@ -10,3 +10,5 @@ dist
 .turbo
 
 .env.local
+.env
+.env*.local
