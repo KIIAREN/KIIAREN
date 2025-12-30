@@ -53,12 +53,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sanidhyy/slack-clone.git"
+    "url": "https://github.com/fentz26/KIIAREN.git"
   },
-  "homepage": "https://github.com/sanidhyy/slack-clone#readme",
+  "homepage": "https://github.com/fentz26/KIIAREN#readme",
   "bugs": {
-    "url": "https://github.com/sanidhyy/slack-clone/issues",
-    "email": "sanidhya.verma12345@gmail.com"
+    "url": "https://github.com/fentz26/KIIAREN/issues"
   },
   "funding": [
     {

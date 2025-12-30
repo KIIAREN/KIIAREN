@@ -1,15 +1,12 @@
 'use client';
 
 import { Search } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FaGithub } from 'react-icons/fa';
 
 import type { Id } from '@/../convex/_generated/dataModel';
 import { Button } from '@/components/ui/button';
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -18,7 +15,6 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { links } from '@/config';
 import { useGetChannels } from '@/features/channels/api/use-get-channels';
 import { useGetMembers } from '@/features/members/api/use-get-members';
 import { useGetWorkspace } from '@/features/workspaces/api/use-get-workspace';
@@ -58,13 +54,11 @@ export const Toolbar = () => {
   }, []);
 
   return (
-    <nav className="flex h-10 items-center justify-between bg-secondary p-1.5">
-      <div className="flex-1" aria-hidden />
-
+    <nav className="flex h-10 items-center justify-center bg-secondary p-1.5">
       <div className="min-w-[280px] max-w-[642px] shrink grow-[2]">
         <Button onClick={() => setOpen(true)} size="sm" className="h-7 w-full justify-start bg-accent/25 px-2 hover:bg-accent/25">
-          <Search className="mr-2 size-4 text-white" />
-          <span className="text-xs text-white">Search {data?.name ?? 'workspace'}...</span>
+          <Search className="mr-2 size-4 text-foreground" />
+          <span className="text-xs text-foreground">Search {data?.name ?? 'workspace'}...</span>
 
           <kbd className="pointer-events-none ml-auto inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-90">
             <span className="text-xs">⌘</span>K
@@ -96,14 +90,7 @@ export const Toolbar = () => {
           </CommandList>
         </CommandDialog>
       </div>
-
-      <div className="ml-auto flex flex-1 items-center justify-end">
-        <Button variant="transparent" size="iconSm" asChild>
-          <Link href={links.sourceCode} target="_blank" rel="noreferrer noopener" title="Source Code">
-            <FaGithub className="size-5 text-white" />
-          </Link>
-        </Button>
-      </div>
     </nav>
   );
 };
+

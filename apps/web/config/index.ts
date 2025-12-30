@@ -41,11 +41,7 @@ export const siteConfig: Metadata = {
     'lucide-react',
   ] as Array<string>,
   authors: {
-    name: 'Sanidhya Kumar Verma',
-    url: 'https://github.com/sanidhyy',
+    name: 'KIIAREN Team',
   },
 } as const;
 
-export const links = {
-  sourceCode: 'https://github.com/sanidhyy/slack-clone',
-} as const;
