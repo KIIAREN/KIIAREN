@@ -1,3 +1,3 @@
-import { convexAuthNextjsMiddleware } from "@convex-dev/auth/nextjs/server";
+import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 
-export const { GET, POST } = convexAuthNextjsMiddleware();
+export const { GET, POST } = convexAuthNextjsToken();
