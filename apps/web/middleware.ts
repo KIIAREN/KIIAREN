@@ -49,8 +49,8 @@ export default convexAuthNextjsMiddleware((req) => {
     if (url.pathname.startsWith('/api/auth') || url.pathname === '/oauth-success') {
       return NextResponse.rewrite(url);
     }
-    // Anything else on auth subdomain should redirect to main site
-    return NextResponse.redirect(new URL('/', req.url));
+    // Anything else on auth subdomain should redirect to main site (MUST be absolute URL to avoid redirect loop)
+    return NextResponse.redirect(new URL('https://kiiaren.com'));
   }
 
   // ---- api.kiiaren.com ----
