@@ -1,5 +1,7 @@
 # KIIAREN - Real-Time Collaboration Platform
 
+![CodeRabbit Reviews](https://img.shields.io/coderabbit/prs/github/KIIAREN/KIIAREN?utm_source=oss&utm_medium=github&utm_campaign=KIIAREN%2FKIIAREN&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 KIIAREN is an open-core collaboration platform with workspaces, channels, direct messages, docs, and whiteboards.
 
 ## Deployment Options
