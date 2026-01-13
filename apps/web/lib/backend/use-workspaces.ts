@@ -202,7 +202,7 @@ export function useJoinWorkspace() {
         setError(error as Error);
         options?.onError?.(error as Error);
 
-        if (options?.throwError) throw error;
+        if (!options?.throwError) throw error;
       } finally {
         setStatus('settled');
         options?.onSettled?.();
@@ -263,7 +263,7 @@ export function useUpdateWorkspace() {
         setError(error as Error);
         options?.onError?.(error as Error);
 
-        if (options?.throwError) throw error;
+        if (!options?.throwError) throw error;
       } finally {
         setStatus('settled');
         options?.onSettled?.();
@@ -324,7 +324,7 @@ export function useRemoveWorkspace() {
         setError(error as Error);
         options?.onError?.(error as Error);
 
-        if (options?.throwError) throw error;
+        if (!options?.throwError) throw error;
       } finally {
         setStatus('settled');
         options?.onSettled?.();
@@ -385,7 +385,7 @@ export function useNewJoinCode() {
         setError(error as Error);
         options?.onError?.(error as Error);
 
-        if (options?.throwError) throw error;
+        if (!options?.throwError) throw error;
       } finally {
         setStatus('settled');
         options?.onSettled?.();
