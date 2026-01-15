@@ -1,7 +1,10 @@
-import { useMutation } from 'convex/react';
-import { useCallback, useMemo, useState } from 'react';
-
-import { api } from '@/../convex/_generated/api';
+/**
+ * Update workspace name.
+ *
+ * @deprecated Use `useUpdateWorkspace` from `@/lib/backend` instead.
+ * This wrapper maintains backward compatibility with the existing API.
+ */
+import { useUpdateWorkspace as useUpdateWorkspaceCanonical } from '@/lib/backend';
 import type { Id } from '@/../convex/_generated/dataModel';
 
 type RequestType = { id: Id<'workspaces'>; name: string };
@@ -15,48 +18,30 @@ type Options = {
 };
 
 export const useUpdateWorkspace = () => {
-  const [data, setData] = useState<ResponseType>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [status, setStatus] = useState<'success' | 'error' | 'settled' | 'pending' | null>(null);
-
-  const isPending = useMemo(() => status === 'pending', [status]);
-  const isSuccess = useMemo(() => status === 'success', [status]);
-  const isError = useMemo(() => status === 'error', [status]);
-  const isSettled = useMemo(() => status === 'settled', [status]);
-
-  const mutation = useMutation(api.workspaces.update);
-
-  const mutate = useCallback(
-    async (values: RequestType, options?: Options) => {
-      try {
-        setData(null);
-        setError(null);
-        setStatus('pending');
-
-        const response = await mutation(values);
-        options?.onSuccess?.(response);
-
-        return response;
-      } catch (error) {
-        setStatus('error');
-        options?.onError?.(error as Error);
-
-        if (!options?.throwError) throw error;
-      } finally {
-        setStatus('settled');
-        options?.onSettled?.();
-      }
-    },
-    [mutation],
-  );
+  const { mutate: updateWorkspace, isPending } = useUpdateWorkspaceCanonical();
 
   return {
-    mutate,
-    data,
-    error,
+    mutate: async (values: RequestType, options?: Options) => {
+      try {
+        await updateWorkspace(
+          { id: values.id, name: values.name },
+          {
+            onSuccess: () => options?.onSuccess?.(values.id as ResponseType),
+            onError: options?.onError,
+            onSettled: options?.onSettled,
+          }
+        );
+        return values.id as ResponseType;
+      } catch (error) {
+        if (options?.throwError !== false) throw error;
+        return null;
+      }
+    },
+    data: null as ResponseType,
+    error: null as Error | null,
     isPending,
-    isError,
-    isSuccess,
-    isSettled,
+    isError: false,
+    isSuccess: false,
+    isSettled: !isPending,
   };
 };

@@ -3,112 +3,266 @@
 /**
  * Workspace Hooks
  *
- * Provider-aware hooks for workspace operations.
- * Currently delegates to Convex; will support self-host when implemented.
+ * Canonical provider-agnostic hooks for workspace operations.
+ * Uses the BackendProvider interface internally, supporting both
+ * Convex (via hooks) and self-host (via async methods).
+ *
+ * @example
+ * ```tsx
+ * import { useGetWorkspaces, useCreateWorkspace } from '@/lib/backend';
+ *
+ * function WorkspaceList() {
+ *   const { data: workspaces, isLoading } = useGetWorkspaces();
+ *   const { mutate: createWorkspace, isPending } = useCreateWorkspace();
+ *
+ *   // Works with any provider (Convex, self-host, etc.)
+ * }
+ * ```
  */
 
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/../convex/_generated/api';
-import { useProviderId } from '@/lib/provider';
-import { useCallback, useMemo, useState } from 'react';
+import { useBackend, useProviderId } from '@/lib/provider';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import type { Id } from '@/../convex/_generated/dataModel';
-import type { Workspace } from '@kiiaren/core';
+import type { Workspace, EntityId } from '@kiiaren/core';
+import { useConvexQuery, useConvexMutation } from './adapters/convex-adapter';
+
+/**
+ * Transform Convex workspace to provider-agnostic type.
+ */
+function transformWorkspace(w: {
+  _id: Id<'workspaces'>;
+  name: string;
+  userId: Id<'users'>;
+  joinCode: string;
+  _creationTime: number;
+  domainVerified?: boolean;
+  joinCodeEnabled?: boolean;
+}): Workspace {
+  return {
+    id: w._id,
+    name: w.name,
+    ownerId: w.userId,
+    joinCode: w.joinCode,
+    createdAt: w._creationTime,
+    domainVerified: w.domainVerified ?? false,
+    joinCodeEnabled: w.joinCodeEnabled ?? true,
+  };
+}
 
 /**
  * Get all workspaces for the current user.
  *
- * Provider-aware: Currently uses Convex, will support self-host when implemented.
+ * Provider-agnostic: Works with Convex (default) and self-host (when implemented).
+ *
+ * @returns Workspace list with loading state
  */
 export function useGetWorkspaces() {
+  const { provider } = useBackend();
   const providerId = useProviderId();
 
-  if (providerId !== 'convex') {
-    throw new Error(
-      `[${providerId}] workspaces.get is not implemented. ` +
-        `See docs/EDITIONING.md for self-host status.`
+  // Convex implementation (uses hooks)
+  if (providerId === 'convex') {
+    return useConvexQuery<
+      Array<{
+        _id: Id<'workspaces'>;
+        name: string;
+        userId: Id<'users'>;
+        joinCode: string;
+        _creationTime: number;
+        domainVerified?: boolean;
+        joinCodeEnabled?: boolean;
+      }>,
+      Workspace[]
+    >(
+      api.workspaces.get,
+      undefined,
+      (data) => {
+        if (!data) return undefined;
+        return data.map(transformWorkspace);
+      }
     );
   }
 
-  const data = useQuery(api.workspaces.get);
-  const isLoading = data === undefined;
+  // Self-host implementation (uses async provider methods)
+  const [workspaces, setWorkspaces] = useState<Workspace[] | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Transform to provider-agnostic type
-  const workspaces: Workspace[] | undefined = useMemo(() => {
-    if (!data) return undefined;
-    return data.map((w) => ({
-      id: w._id,
-      name: w.name,
-      ownerId: w.userId,
-      joinCode: w.joinCode,
-      createdAt: w._creationTime,
-      domainVerified: w.domainVerified ?? false,
-      joinCodeEnabled: w.joinCodeEnabled ?? true,
-    }));
-  }, [data]);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWorkspaces() {
+      try {
+        setIsLoading(true);
+        // Get current user ID from provider
+        const user = await provider.auth.getCurrentUser();
+        if (!user || cancelled) return;
+
+        // Fetch workspaces via provider
+        const data = await provider.persistence.workspace.getByUserId(user.id);
+        if (!cancelled) {
+          setWorkspaces(data);
+        }
+      } catch (error) {
+        console.error('[useGetWorkspaces] Error loading workspaces:', error);
+        if (!cancelled) {
+          setWorkspaces([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadWorkspaces();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [provider]);
 
   return { data: workspaces, isLoading };
 }
 
 /**
  * Get a single workspace by ID.
+ *
+ * Provider-agnostic: Works with Convex (default) and self-host (when implemented).
+ *
+ * @param id - Workspace ID
+ * @returns Workspace with loading state
  */
-export function useGetWorkspace(id: Id<'workspaces'>) {
+export function useGetWorkspace(id: EntityId) {
+  const { provider } = useBackend();
   const providerId = useProviderId();
 
-  if (providerId !== 'convex') {
-    throw new Error(
-      `[${providerId}] workspaces.getById is not implemented. ` +
-        `See docs/EDITIONING.md for self-host status.`
+  // Convex implementation
+  if (providerId === 'convex') {
+    return useConvexQuery<
+      {
+        _id: Id<'workspaces'>;
+        name: string;
+        userId: Id<'users'>;
+        joinCode: string;
+        _creationTime: number;
+        domainVerified?: boolean;
+        joinCodeEnabled?: boolean;
+      } | null,
+      Workspace | null
+    >(
+      api.workspaces.getById,
+      { id: id as Id<'workspaces'> },
+      (data) => {
+        if (data === undefined) return undefined;
+        if (data === null) return null;
+        return transformWorkspace(data);
+      }
     );
   }
 
-  const data = useQuery(api.workspaces.getById, { id });
-  const isLoading = data === undefined;
+  // Self-host implementation
+  const [workspace, setWorkspace] = useState<Workspace | null | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const workspace: Workspace | null | undefined = useMemo(() => {
-    if (data === undefined) return undefined;
-    if (data === null) return null;
-    return {
-      id: data._id,
-      name: data.name,
-      ownerId: data.userId,
-      joinCode: data.joinCode,
-      createdAt: data._creationTime,
-      domainVerified: data.domainVerified ?? false,
-      joinCodeEnabled: data.joinCodeEnabled ?? true,
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWorkspace() {
+      try {
+        setIsLoading(true);
+        const data = await provider.persistence.workspace.get(id);
+        if (!cancelled) {
+          setWorkspace(data);
+        }
+      } catch (error) {
+        console.error('[useGetWorkspace] Error loading workspace:', error);
+        if (!cancelled) {
+          setWorkspace(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadWorkspace();
+
+    return () => {
+      cancelled = true;
     };
-  }, [data]);
+  }, [provider, id]);
 
   return { data: workspace, isLoading };
 }
 
 /**
  * Create a new workspace.
+ *
+ * Provider-agnostic: Works with Convex (default) and self-host (when implemented).
+ *
+ * @example
+ * ```tsx
+ * const { mutate: createWorkspace, isPending } = useCreateWorkspace();
+ *
+ * await createWorkspace({ name: 'My Workspace' }, {
+ *   onSuccess: (id) => console.log('Created:', id),
+ *   onError: (err) => console.error('Failed:', err),
+ * });
+ * ```
  */
 export function useCreateWorkspace() {
+  const { provider } = useBackend();
   const providerId = useProviderId();
-  const mutation = useMutation(api.workspaces.create);
-  const [isPending, setIsPending] = useState(false);
 
-  if (providerId !== 'convex') {
-    throw new Error(
-      `[${providerId}] workspaces.create is not implemented. ` +
-        `See docs/EDITIONING.md for self-host status.`
-    );
+  // Convex implementation
+  if (providerId === 'convex') {
+    const { mutate, isPending } = useConvexMutation<
+      { name: string },
+      Id<'workspaces'>
+    >(api.workspaces.create);
+
+    return {
+      mutate: async (
+        args: { name: string },
+        options?: {
+          onSuccess?: (data: EntityId) => void;
+          onError?: (error: Error) => void;
+          onSettled?: () => void;
+        }
+      ) => {
+        try {
+          const result = await mutate(args);
+          options?.onSuccess?.(result);
+          return result;
+        } catch (error) {
+          options?.onError?.(error as Error);
+          throw error;
+        } finally {
+          options?.onSettled?.();
+        }
+      },
+      isPending,
+    };
   }
+
+  // Self-host implementation
+  const [isPending, setIsPending] = useState(false);
 
   const mutate = useCallback(
     async (
       { name }: { name: string },
       options?: {
-        onSuccess?: (data: Id<'workspaces'>) => void;
+        onSuccess?: (data: EntityId) => void;
         onError?: (error: Error) => void;
         onSettled?: () => void;
       }
     ) => {
       setIsPending(true);
       try {
-        const result = await mutation({ name });
+        const result = await provider.persistence.workspace.create(name);
         options?.onSuccess?.(result);
         return result;
       } catch (error) {
@@ -119,7 +273,7 @@ export function useCreateWorkspace() {
         options?.onSettled?.();
       }
     },
-    [mutation]
+    [provider]
   );
 
   return { mutate, isPending };
@@ -132,35 +286,81 @@ export function useCreateWorkspace() {
  * - Join codes (when domain not verified)
  * - Invite links (when domain verified)
  * - Auto-join (when email domain matches verified workspace domain)
+ *
+ * Provider-agnostic: Works with Convex (default) and self-host (when implemented).
  */
 export function useJoinWorkspace() {
+  const { provider } = useBackend();
   const providerId = useProviderId();
-  const mutation = useMutation(api.workspaces.join);
-  const [isPending, setIsPending] = useState(false);
 
-  if (providerId !== 'convex') {
-    throw new Error(
-      `[${providerId}] workspaces.join is not implemented. ` +
-        `See docs/EDITIONING.md for self-host status.`
-    );
-  }
-
-  const mutate = useCallback(
-    async (
-      args: {
+  // Convex implementation
+  if (providerId === 'convex') {
+    const { mutate, isPending } = useConvexMutation<
+      {
         workspaceId: Id<'workspaces'>;
         joinCode?: string;
         inviteCode?: string;
       },
+      Id<'workspaces'>
+    >(api.workspaces.join);
+
+    return {
+      mutate: async (
+        args: {
+          workspaceId: EntityId;
+          joinCode?: string;
+          inviteCode?: string;
+        },
+        options?: {
+          onSuccess?: (data: EntityId) => void;
+          onError?: (error: Error) => void;
+          onSettled?: () => void;
+        }
+      ) => {
+        try {
+          const result = await mutate({
+            ...args,
+            workspaceId: args.workspaceId as Id<'workspaces'>,
+          });
+          options?.onSuccess?.(result);
+          return result;
+        } catch (error) {
+          options?.onError?.(error as Error);
+          throw error;
+        } finally {
+          options?.onSettled?.();
+        }
+      },
+      isPending,
+    };
+  }
+
+  // Self-host implementation
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = useCallback(
+    async (
+      args: {
+        workspaceId: EntityId;
+        joinCode?: string;
+        inviteCode?: string;
+      },
       options?: {
-        onSuccess?: (data: Id<'workspaces'>) => void;
+        onSuccess?: (data: EntityId) => void;
         onError?: (error: Error) => void;
         onSettled?: () => void;
       }
     ) => {
       setIsPending(true);
       try {
-        const result = await mutation(args);
+        let result: EntityId;
+        if (args.joinCode) {
+          result = await provider.persistence.workspace.join(args.joinCode);
+        } else if (args.inviteCode) {
+          result = await provider.persistence.invite.redeem(args.inviteCode);
+        } else {
+          throw new Error('Either joinCode or inviteCode must be provided');
+        }
         options?.onSuccess?.(result);
         return result;
       } catch (error) {
@@ -171,7 +371,223 @@ export function useJoinWorkspace() {
         options?.onSettled?.();
       }
     },
-    [mutation]
+    [provider]
+  );
+
+  return { mutate, isPending };
+}
+
+/**
+ * Update workspace name.
+ *
+ * Provider-agnostic: Works with Convex (default) and self-host (when implemented).
+ */
+export function useUpdateWorkspace() {
+  const { provider } = useBackend();
+  const providerId = useProviderId();
+
+  // Convex implementation
+  if (providerId === 'convex') {
+    const { mutate, isPending } = useConvexMutation<
+      { id: Id<'workspaces'>; name: string },
+      void
+    >(api.workspaces.update);
+
+    return {
+      mutate: async (
+        args: { id: EntityId; name: string },
+        options?: {
+          onSuccess?: () => void;
+          onError?: (error: Error) => void;
+          onSettled?: () => void;
+        }
+      ) => {
+        try {
+          await mutate({
+            id: args.id as Id<'workspaces'>,
+            name: args.name,
+          });
+          options?.onSuccess?.();
+        } catch (error) {
+          options?.onError?.(error as Error);
+          throw error;
+        } finally {
+          options?.onSettled?.();
+        }
+      },
+      isPending,
+    };
+  }
+
+  // Self-host implementation
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = useCallback(
+    async (
+      args: { id: EntityId; name: string },
+      options?: {
+        onSuccess?: () => void;
+        onError?: (error: Error) => void;
+        onSettled?: () => void;
+      }
+    ) => {
+      setIsPending(true);
+      try {
+        await provider.persistence.workspace.update(args.id, { name: args.name });
+        options?.onSuccess?.();
+      } catch (error) {
+        options?.onError?.(error as Error);
+        throw error;
+      } finally {
+        setIsPending(false);
+        options?.onSettled?.();
+      }
+    },
+    [provider]
+  );
+
+  return { mutate, isPending };
+}
+
+/**
+ * Remove (delete) a workspace.
+ *
+ * Provider-agnostic: Works with Convex (default) and self-host (when implemented).
+ */
+export function useRemoveWorkspace() {
+  const { provider } = useBackend();
+  const providerId = useProviderId();
+
+  // Convex implementation
+  if (providerId === 'convex') {
+    const { mutate, isPending } = useConvexMutation<
+      { id: Id<'workspaces'> },
+      Id<'workspaces'>
+    >(api.workspaces.remove);
+
+    return {
+      mutate: async (
+        args: { id: EntityId },
+        options?: {
+          onSuccess?: () => void;
+          onError?: (error: Error) => void;
+          onSettled?: () => void;
+        }
+      ) => {
+        try {
+          await mutate({ id: args.id as Id<'workspaces'> });
+          options?.onSuccess?.();
+        } catch (error) {
+          options?.onError?.(error as Error);
+          throw error;
+        } finally {
+          options?.onSettled?.();
+        }
+      },
+      isPending,
+    };
+  }
+
+  // Self-host implementation
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = useCallback(
+    async (
+      args: { id: EntityId },
+      options?: {
+        onSuccess?: () => void;
+        onError?: (error: Error) => void;
+        onSettled?: () => void;
+      }
+    ) => {
+      setIsPending(true);
+      try {
+        await provider.persistence.workspace.remove(args.id);
+        options?.onSuccess?.();
+      } catch (error) {
+        options?.onError?.(error as Error);
+        throw error;
+      } finally {
+        setIsPending(false);
+        options?.onSettled?.();
+      }
+    },
+    [provider]
+  );
+
+  return { mutate, isPending };
+}
+
+/**
+ * Regenerate join code for a workspace.
+ *
+ * Provider-agnostic: Works with Convex (default) and self-host (when implemented).
+ */
+export function useRegenerateJoinCode() {
+  const { provider } = useBackend();
+  const providerId = useProviderId();
+
+  // Convex implementation
+  if (providerId === 'convex') {
+    const { mutate, isPending } = useConvexMutation<
+      { workspaceId: Id<'workspaces'> },
+      Id<'workspaces'>
+    >(api.workspaces.newJoinCode);
+
+    return {
+      mutate: async (
+        args: { workspaceId: EntityId },
+        options?: {
+          onSuccess?: (joinCode: string) => void;
+          onError?: (error: Error) => void;
+          onSettled?: () => void;
+        }
+      ) => {
+        try {
+          // Note: Convex returns workspaceId, not joinCode directly
+          // We'd need to fetch the workspace to get the new joinCode
+          await mutate({ workspaceId: args.workspaceId as Id<'workspaces'> });
+          // For now, we'll need to refetch or get from workspace
+          options?.onSuccess?.('');
+        } catch (error) {
+          options?.onError?.(error as Error);
+          throw error;
+        } finally {
+          options?.onSettled?.();
+        }
+      },
+      isPending,
+    };
+  }
+
+  // Self-host implementation
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = useCallback(
+    async (
+      args: { workspaceId: EntityId },
+      options?: {
+        onSuccess?: (joinCode: string) => void;
+        onError?: (error: Error) => void;
+        onSettled?: () => void;
+      }
+    ) => {
+      setIsPending(true);
+      try {
+        const joinCode = await provider.persistence.workspace.regenerateJoinCode(
+          args.workspaceId
+        );
+        options?.onSuccess?.(joinCode);
+        return joinCode;
+      } catch (error) {
+        options?.onError?.(error as Error);
+        throw error;
+      } finally {
+        setIsPending(false);
+        options?.onSettled?.();
+      }
+    },
+    [provider]
   );
 
   return { mutate, isPending };

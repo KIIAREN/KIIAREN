@@ -12,7 +12,7 @@ const WorkspacePage = () => {
     const [open, setOpen] = useCreateWorkspaceModal();
     const { data, isLoading } = useGetWorkspaces();
 
-    const workspaceId = useMemo(() => data?.[0]?._id, [data]);
+    const workspaceId = useMemo(() => data?.[0]?.id, [data]);
 
     useEffect(() => {
         if (isLoading) return;
