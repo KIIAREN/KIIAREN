@@ -1,17 +1,23 @@
-# KIIAREN - Real-Time Collaboration Platform
+# KIIAREN-Release - Self-Hosted Open Source Edition
 
-![CodeRabbit Reviews](https://img.shields.io/coderabbit/prs/github/KIIAREN/KIIAREN?utm_source=oss&utm_medium=github&utm_campaign=KIIAREN%2FKIIAREN&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+![CodeRabbit Reviews](https://img.shields.io/coderabbit/prs/github/KIIAREN/KIIAREN-Release?utm_source=oss&utm_medium=github&utm_campaign=KIIAREN%2FKIIAREN-Release&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
 
-KIIAREN is an open-core collaboration platform with workspaces, channels, direct messages, docs, and whiteboards.
+**KIIAREN-Release** is the open-source, self-hosted edition of KIIAREN - a real-time collaboration platform with workspaces, channels, direct messages, docs, and whiteboards.
+
+> **Note:** This repository is for self-hosted deployments with flexible backend options. For the managed SaaS version at [kiiaren.com](https://kiiaren.com), see the private KIIAREN-SAAS repository.
 
 ## Deployment Options
 
-| Option | Backend | Status | Best For |
-|--------|---------|--------|----------|
-| **Managed Cloud** | Convex | Production-ready | Most users, teams, enterprises |
-| **Self-Hosted** | PostgreSQL + WebSocket | Skeleton only | Contributors, specific compliance needs |
+KIIAREN-Release offers flexible backend options:
 
-**Default provider: Convex** - A managed backend service that handles real-time subscriptions, authentication, and storage. This is the recommended deployment path.
+| Database | Realtime | Search | Status | Best For |
+|----------|----------|--------|--------|----------|
+| **Convex** | Convex | Convex Search | ✅ Production | Quick start, managed infrastructure |
+| **Postgres** | ws-redis | pg_fts | 🚧 Planned | Common self-host |
+| **Postgres** | ws-nats | Meilisearch | 🚧 Planned | Enterprise self-host |
+| **SQLite** | none | none | 🚧 Planned | Development, simple deployments |
+
+**Default: Convex** - A managed backend service that handles real-time subscriptions, authentication, and storage. This is the recommended deployment path for most users.
 
 ---
 
@@ -245,11 +251,19 @@ For detailed variable mapping and validation, see [docs/setup/env-mapping.md](do
 
 ## License
 
-MIT (see [docs/product/license-strategy.md](docs/product/license-strategy.md) for licensing philosophy)
+MIT License - see LICENSE file for details.
+
+See [docs/product/license-strategy.md](docs/product/license-strategy.md) for licensing philosophy.
 
 ## Original Author
 
 Sanidhya Kumar Verma - [GitHub](https://github.com/sanidhyy)
+
+## Copyright
+
+Copyright © 2026 KIIAREN
+
+---
 
 ## Monorepo Refactor
 
