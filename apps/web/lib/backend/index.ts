@@ -60,11 +60,13 @@
 export {
   useGetWorkspaces,
   useGetWorkspace,
+  useGetWorkspaceInfo,
   useCreateWorkspace,
   useJoinWorkspace,
   useUpdateWorkspace,
   useRemoveWorkspace,
   useRegenerateJoinCode,
+  useNewJoinCode, // Alias for backward compatibility
 } from './use-workspaces';
 
 // Channel hooks

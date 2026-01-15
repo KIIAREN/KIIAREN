@@ -4,7 +4,7 @@ import { Loader } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo } from 'react';
 
-import { useGetWorkspaces } from '@/features/workspaces/api/use-get-workspaces';
+import { useGetWorkspaces } from '@/lib/backend';
 import { useCreateWorkspaceModal } from '@/features/workspaces/store/use-create-workspace-modal';
 
 const WorkspacePage = () => {
